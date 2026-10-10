@@ -4,7 +4,7 @@ A fictional retail bank that runs locally or as a complete Vercel app, showing *
 
 ## Run locally
 
-Prerequisites: Python 3.11+ and Node 20.19+ (or 22.12+), npm, and make. Python 3.14 and Node 25 were used for verification.
+Prerequisites: Python 3.12+ and Node 20.19+ (or 22.12+), npm, and make. Python 3.14 and Node 25 were used for verification.
 
 ```sh
 make setup
@@ -66,7 +66,7 @@ make test
 make build
 ```
 
-Tests use a temporary database, real MCP over HTTP, and a fake model for LangGraph. They exercise seed counts, account reconciliation, credentials, protected endpoints, filter validation, summary amounts, offer eligibility, read-only access, customer isolation, graph tool execution, session memory, chat error mapping and UI login/chat flows. No paid LLM requests are made by automated tests. Version snapshots are recorded in `requirements.lock.txt` and `frontend/package-lock.json`; use `pip install -r requirements.lock.txt` to reproduce the tested Python versions.
+Tests use a temporary database, real MCP over HTTP, and a fake model for LangGraph. They exercise seed counts, account reconciliation, credentials, protected endpoints, filter validation, summary amounts, offer eligibility, read-only access, customer isolation, graph tool execution, session memory, chat error mapping and UI login/chat flows. No paid LLM requests are made by automated tests. Vercel uses the project dependencies in `pyproject.toml` and `uv.lock`. Keep `pyproject.toml` dependencies aligned with `requirements.txt`. Local version snapshots are recorded in `requirements.lock.txt` and `frontend/package-lock.json`; use `pip install -r requirements.lock.txt` to reproduce the tested Python versions.
 
 The manual real-model checklist and verification limits are in [docs/eval-results.md](docs/eval-results.md).
 

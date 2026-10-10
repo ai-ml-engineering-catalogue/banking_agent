@@ -120,3 +120,5 @@ The user requested full-app Vercel support. Root `main.py` is the FastAPI entry 
 Vercel requires an explicit random JWT secret of at least 32 characters. Leave DB_PATH and MCP_URL unset in Vercel; local `.env` values are not deployment settings. MCP still has exactly three read-only tools. Public `/mcp/` creates a server per request with host validation; custom domains require MCP_ALLOWED_HOSTS. Treat `/tmp` data as a disposable fictional snapshot, not durable storage.
 
 Run `make build` before `tests/test_vercel.py` because SPA smoke checks need the frontend output. Deployment behavior, encrypted context isolation, cold-start continuity, public authentication and embedded MCP are covered there. A passing local simulation does not mean a real Vercel deployment or paid-model evaluation was performed. See the Vercel section of README for dashboard configuration and remaining limits.
+
+Vercel resolves the root `[project]` table with uv. Keep its dependency list aligned with requirements.txt, and regenerate uv.lock after dependency changes. Do not remove the project table while retaining a pyproject.toml; Vercel invokes uv lock against this manifest.
