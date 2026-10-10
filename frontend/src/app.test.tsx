@@ -11,3 +11,18 @@ test('chat shows pending, answer and used tool',async()=>{let resolve:any;vi.moc
 test('chat error visible',async()=>{vi.mocked(api).mockRejectedValue(new Error('Assistant unavailable'));render(<Chatbot/>);fireEvent.click(screen.getByText('Any offers on travel?'));expect(await screen.findByText('Assistant unavailable')).toBeInTheDocument();});
 
 test("protected route redirects to login",()=>{render(<MemoryRouter initialEntries={["/"]}><App/></MemoryRouter>);expect(screen.getByText("Good to see you.")).toBeInTheDocument();});
+
+test('chat forwards encrypted context and new chat clears it',async()=>{
+ vi.mocked(api).mockResolvedValue({answer:'Answer one',tools_used:[],context_token:'encrypted-context'});
+ render(<Chatbot/>);
+ fireEvent.change(screen.getByLabelText('Your banking question'),{target:{value:'Show UPI'}});
+ fireEvent.click(screen.getByLabelText('Send message'));
+ await screen.findByText('Answer one');
+ fireEvent.change(screen.getByLabelText('Your banking question'),{target:{value:'And last month?'}});
+ fireEvent.click(screen.getByLabelText('Send message'));
+ await waitFor(()=>expect(vi.mocked(api)).toHaveBeenLastCalledWith('/chat',expect.objectContaining({context_token:'encrypted-context'})));
+ await waitFor(()=>expect(screen.getByText('New chat')).not.toBeDisabled());
+ fireEvent.click(screen.getByText('New chat'));
+ fireEvent.click(screen.getByText('Any offers on travel?'));
+ await waitFor(()=>expect(vi.mocked(api)).toHaveBeenLastCalledWith('/chat',expect.objectContaining({context_token:undefined})));
+});

@@ -14,7 +14,7 @@ run-backend:
 	$(PYTHON) -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
 run-frontend:
 	npm run dev --prefix frontend
-test:
+test: build
 	.venv/bin/pytest -q
 	npm test --prefix frontend
 build:

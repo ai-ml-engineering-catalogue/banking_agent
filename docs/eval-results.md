@@ -21,3 +21,10 @@ Ensure all amounts use Indian grouping; no full card numbers appear; empty resul
 Verified: 34 Python tests, five UI tests, and the TypeScript/Vite production build pass. Local frontend returned HTTP 200. The browser automation service reports no available browsers, so visual desktop/mobile QA was not run.
 
 After dependency patching: final Python (34) and UI (5) tests pass; production build passes. npm reported zero vulnerabilities. Vite reports a bundle-size advisory (approximately 771 kB before gzip); this does not block the local demo.
+
+
+## Full-app Vercel adaptation — 10 October 2026
+
+Verified locally: 42 Python tests, six frontend tests, and the TypeScript/Vite production build pass. New tests exercise encrypted context tamper resistance and customer/session binding, temporary database seeding/reuse, hosted-secret validation, authenticated embedded MCP filters/isolation, stateless follow-ups after resetting checkpoints, and the single-app login/REST/MCP/SPA routes.
+
+A real Vercel build/deployment has not been performed. Python tests ran on the existing Python 3.14 environment; the deployment selects Python 3.12. Real-model evaluations and visual browser QA remain pending. The repository is configured for a FastAPI project at the repo root, with React assets promoted through FastAPI frontend support. Vercel dashboard environment variables and runtime limits must be configured as described in README.

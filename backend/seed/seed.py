@@ -4,9 +4,9 @@ import random, sqlite3, bcrypt
 from common.config import db_path
 from backend.seed.data import USERS, MERCHANTS
 
-def seed(today=None):
+def seed(today=None, path=None):
     today = today or date.today()
-    path = db_path(); path.parent.mkdir(parents=True, exist_ok=True)
+    path = Path(path) if path is not None else db_path(); path.parent.mkdir(parents=True, exist_ok=True)
     rng = random.Random(42)
     with sqlite3.connect(path) as db:
         db.execute('PRAGMA foreign_keys=OFF')

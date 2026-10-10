@@ -110,3 +110,13 @@ As recorded on 10 October 2026:
 ## Handoff expectations
 
 Keep changes bounded to the user's request. Do not undo user changes or edit `.env` unnecessarily. Update README when startup/configuration changes, and update tests when behavior changes. In the final handoff, state what changed, checks actually run, any concrete limits, and the command needed to run the result.
+
+## Vercel deployment mode
+
+The user requested full-app Vercel support. Root `main.py` is the FastAPI entry point; root `vercel.json` builds React and configures a 300-second function. `.python-version` selects Python 3.12. Import the repo root with the FastAPI preset; no frontend-only rewrites or external backend are required.
+
+`VERCEL=1` selects temporary SQLite initialization in `common/db.py` and stateless chat in `agent/service.py`. `agent/transport.py` uses an authenticated in-process HTTP/ASGI MCP client. `agent/context.py` encrypts bounded recent conversation turns and binds them to customer/session with a one-hour expiry. The UI passes `context_token` and clears it on New chat. Preserve these isolation checks and never replace them with unsigned client-provided history. Local mode still uses the separate MCP process and MemorySaver.
+
+Vercel requires an explicit random JWT secret of at least 32 characters. Leave DB_PATH and MCP_URL unset in Vercel; local `.env` values are not deployment settings. MCP still has exactly three read-only tools. Public `/mcp/` creates a server per request with host validation; custom domains require MCP_ALLOWED_HOSTS. Treat `/tmp` data as a disposable fictional snapshot, not durable storage.
+
+Run `make build` before `tests/test_vercel.py` because SPA smoke checks need the frontend output. Deployment behavior, encrypted context isolation, cold-start continuity, public authentication and embedded MCP are covered there. A passing local simulation does not mean a real Vercel deployment or paid-model evaluation was performed. See the Vercel section of README for dashboard configuration and remaining limits.

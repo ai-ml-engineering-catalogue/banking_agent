@@ -8,6 +8,7 @@ from common.auth import create_token, verify_token
 from common.db import connection
 from mcp_server import queries
 from agent.service import run_chat
+from agent.context import ContextError
 app=FastAPI(title='iBank Demo API')
 app.add_middleware(CORSMiddleware,allow_origins=['http://localhost:5173','http://127.0.0.1:5173'],allow_methods=['GET','POST'],allow_headers=['Authorization','Content-Type'])
 bearer=HTTPBearer(auto_error=False)
@@ -23,6 +24,7 @@ class Login(BaseModel):
     username: str=Field(max_length=100)
     password: str=Field(max_length=100)
 class Chat(BaseModel):
+    context_token: str | None=Field(default=None,max_length=100000)
     message: str=Field(min_length=1,max_length=2000)
     session_id: str=Field(min_length=1,max_length=100,pattern=r'^[a-zA-Z0-9_-]+$')
 @app.post('/api/auth/login')
@@ -67,7 +69,8 @@ def summary(user=Depends(auth)):
         return {'categories':[dict(r) for r in rows],'period_start':start}
 @app.post('/api/chat')
 async def chat(body: Chat,user=Depends(auth)):
-    try: return await run_chat(user[1],body.session_id,body.message)
+    try: return await run_chat(user[1],body.session_id,body.message,body.context_token)
+    except ContextError as exc: raise HTTPException(422,detail=str(exc))
     except Exception:
         logging.getLogger(__name__).warning('Assistant request failed; verify MCP connectivity and OpenAI configuration.')
         raise HTTPException(502,detail={'error':'ASSISTANT_UNAVAILABLE','message':'The assistant is unavailable. Check the MCP service and server-side OpenAI key, then try again.'})

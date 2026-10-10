@@ -2,3 +2,9 @@
 pythonpath = ["."]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.vercel]
+entrypoint = "main:app"
+
+[tool.vercel.fastapi.static]
+cdn = true

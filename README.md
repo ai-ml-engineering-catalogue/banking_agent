@@ -1,6 +1,6 @@
 # iBank Demo
 
-A locally runnable fictional retail bank showing **React → FastAPI → LangGraph → authenticated MCP → read-only SQLite**. The UI includes Dashboard, Transactions, Cards, Offers and Chatbot. No real banking connections or ICICI assets are used.
+A fictional retail bank that runs locally or as a complete Vercel app, showing **React → FastAPI → LangGraph → authenticated MCP → read-only SQLite**. The UI includes Dashboard, Transactions, Cards, Offers and Chatbot. No real banking connections or ICICI assets are used.
 
 ## Run locally
 
@@ -38,7 +38,7 @@ The login page also has a collapsible demo account picker.
 | `DB_PATH` | Defaults to `data/bank.db`; relative to repository working directory |
 | `MCP_URL` | Defaults to `http://127.0.0.1:8001/mcp` |
 
-Copy `.env.example` to `.env`; `.env`, database, installed dependencies and build output are ignored. JWTs expire in 60 minutes. The browser stores the token in sessionStorage for this demo. All processes bind to loopback; this implementation is intended for local use.
+Copy `.env.example` to `.env`; `.env`, database, installed dependencies and build output are ignored. JWTs expire in 60 minutes. The browser stores the token in sessionStorage for this demo. Local processes bind to loopback. For hosted deployment, use the Vercel instructions below.
 
 ## Architecture
 
@@ -93,3 +93,45 @@ git push -u origin main
 ```
 
 Before committing, confirm `git check-ignore .env data/bank.db` lists both files. Keep `.env` and database files local; only `.env.example` belongs in Git. The credentials documented above are intentionally fictional demo credentials. On a fresh clone, follow the setup steps above to install dependencies and regenerate the database.
+
+## Deploy the complete app to Vercel
+
+The root `main.py` exports one FastAPI application serving the React build, REST API and authenticated MCP endpoint. Use **the repository root**, not `frontend`, as the Vercel Root Directory. Do not configure the project as a Vite-only site.
+
+1. Commit and push the deployment changes to GitHub.
+2. In Vercel choose **Add New → Project** and import `ai-ml-engineering-catalogue/banking_agent`.
+3. Set **Root Directory** to the repository root (leave the field empty or use `.`), **Framework Preset** to **FastAPI**, and **Node.js Version** to **22.x**. Leave Install Command and Output Directory on their defaults. The root `vercel.json` sets the build command; remove old Vite dashboard overrides if this project was previously configured for frontend-only deployment.
+4. Add server-side environment variables for both Preview and Production:
+
+   | Variable | Value |
+   | --- | --- |
+   | `OPENAI_API_KEY` | Your OpenAI API key |
+   | `OPENAI_MODEL` | `gpt-4o-mini` or your chosen OpenAI model |
+   | `JWT_SECRET` | A randomly generated secret, at least 32 characters |
+
+   Generate a secret locally with `.venv/bin/python -c "import secrets; print(secrets.token_urlsafe(48))"`. Store it in Vercel settings, not in Git. Do not prefix these variables with `VITE_`. Do **not** copy local `DB_PATH=data/bank.db` or `MCP_URL` into Vercel; leave both unset.
+5. Deploy. Vercel installs Python requirements, builds React using `npm ci --prefix frontend && npm run build --prefix frontend`, and uses Python 3.12 from `.python-version`.
+6. Open the deployment URL and log in using a demo account. Verify Dashboard, Cards, Offers, `/chatbot` refresh, a question such as “Show my last 5 UPI payments”, and a follow-up. Without an OpenAI key, banking views work but chat reports unavailable.
+
+No separate backend hosting, database service, or MCP process is required for this read-only demo. Vercel sets `VERCEL=1`, which selects the serverless behavior automatically:
+
+- Each instance seeds a fictional SQLite snapshot on first data access under `/tmp/ibank-demo/bank.db`. Initialization uses a lock and atomic replacement; banking and MCP queries still open it read-only. No real data is stored. The first request incurs seed time. Instances can be discarded and recreated, and their snapshots are not durable. Seed dates follow each instance's initialization date, so recent data can differ across long-lived instances around date boundaries.
+- The LangGraph agent still loads the exact three MCP tools with `MultiServerMCPClient` and sends the bearer JWT. Its HTTP client uses an in-process ASGI transport instead of calling another function or spawning a server.
+- A hosted MCP client can connect to `https://YOUR_DEPLOYMENT/mcp/` with a bearer token. The endpoint runs a stateless MCP server per request. Vercel deployment protection may additionally require platform access for external clients; the internal chat path does not depend on public self-requests.
+- Conversation context is an encrypted, authenticated token carried by the chat UI. It contains only recent user/assistant turns, is bound to customer and session, expires after an hour, and does not depend on instance memory. Up to six recent turns are retained, with a size cap. Prior answers are context, and banking facts must be fetched again. New chat clears this token. Refreshing or leaving the chat page clears UI history, as in local mode.
+- A random hosted JWT secret is required. The demo fallback is rejected. Rotating it invalidates existing login and conversation tokens.
+- `maxDuration` is set to 300 seconds in `vercel.json`; your Vercel plan must support that setting. Model latency and platform execution limits can still cause a chat timeout. This is a fictional read-only demo, not production banking infrastructure.
+
+For a custom domain used by external MCP clients, set `MCP_ALLOWED_HOSTS` to a comma-separated list of hostnames (no URL scheme), for example `bank.example.com`. The default deployment and production domains are read from Vercel system variables. Host/origin checks remain enabled.
+
+### Preview the single-app entry point locally
+
+After `make build`, run:
+
+```sh
+VERCEL=1 DB_PATH=/tmp/ibank-demo-preview/bank.db .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+Ensure your local `.env` has a random JWT secret of at least 32 characters. Open `http://127.0.0.1:8000`; no separate MCP or Vite process is needed in this mode. Regular `make dev` retains the original three-service architecture.
+
+Vercel reference: [FastAPI entry points, frontend serving and function configuration](https://vercel.com/docs/frameworks/backend/fastapi).
