@@ -1,0 +1,9 @@
+CREATE TABLE customers(id INTEGER PRIMARY KEY, username TEXT UNIQUE, password_hash TEXT, full_name TEXT, email TEXT, phone TEXT, city TEXT, created_at TEXT);
+CREATE TABLE accounts(id INTEGER PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), account_number TEXT, ifsc TEXT, branch TEXT, account_type TEXT, balance_paise INTEGER, opened_on TEXT);
+CREATE TABLE cards(id INTEGER PRIMARY KEY, customer_id INTEGER REFERENCES customers(id), account_id INTEGER REFERENCES accounts(id), card_type TEXT, network TEXT, variant TEXT, last4 TEXT, expiry TEXT, status TEXT, credit_limit_paise INTEGER, statement_day INTEGER, due_day INTEGER);
+CREATE TABLE account_transactions(id INTEGER PRIMARY KEY, account_id INTEGER REFERENCES accounts(id), card_id INTEGER REFERENCES cards(id), txn_ts TEXT, amount_paise INTEGER, direction TEXT, channel TEXT, merchant TEXT, description TEXT, category TEXT, balance_after_paise INTEGER, reference_no TEXT, status TEXT);
+CREATE TABLE credit_card_transactions(id INTEGER PRIMARY KEY, card_id INTEGER REFERENCES cards(id), txn_ts TEXT, posted_on TEXT, amount_paise INTEGER, txn_type TEXT, merchant TEXT, category TEXT, description TEXT, reference_no TEXT, reward_points INTEGER, status TEXT);
+CREATE TABLE credit_card_statements(id INTEGER PRIMARY KEY, card_id INTEGER REFERENCES cards(id), period_start TEXT, period_end TEXT, total_due_paise INTEGER, min_due_paise INTEGER, due_date TEXT, status TEXT);
+CREATE TABLE offers(id INTEGER PRIMARY KEY, title TEXT, description TEXT, category TEXT, merchant TEXT, offer_type TEXT, benefit_text TEXT, eligible_card_type TEXT, eligible_network TEXT, min_spend_paise INTEGER, valid_from TEXT, valid_to TEXT, promo_code TEXT, terms TEXT);
+CREATE INDEX account_tx_date ON account_transactions(account_id, txn_ts);
+CREATE INDEX credit_tx_date ON credit_card_transactions(card_id, txn_ts);
