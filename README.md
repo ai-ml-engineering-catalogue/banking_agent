@@ -34,9 +34,20 @@ The login page also has a collapsible demo account picker.
 | --- | --- |
 | `OPENAI_API_KEY` | OpenAI API key; server only, needed for chat |
 | `OPENAI_MODEL` | Defaults to `gpt-4o-mini` |
+| `OPENAI_TRANSCRIBE_MODEL` | Optional; voice speech-to-text model, defaults to `gpt-4o-mini-transcribe` |
+| `OPENAI_TTS_MODEL` | Optional; voice reply model, defaults to `gpt-4o-mini-tts` |
+| `OPENAI_TTS_VOICE` | Optional; voice reply voice, defaults to `alloy` |
 | `JWT_SECRET` | Shared HS256 signing secret for backend and MCP; replace demo default |
 | `DB_PATH` | Defaults to `data/bank.db`; relative to repository working directory |
 | `MCP_URL` | Defaults to `http://127.0.0.1:8001/mcp` |
+
+### Voice chat
+
+The Chatbot page has a microphone button next to Send. Tap it, speak your question (up to 60 seconds), then tap stop. The recording is sent to `POST /api/voice/transcribe`, which uses the server-side OpenAI key to transcribe it. The transcript is then sent through the normal `/api/chat` flow, so voice questions use the same three MCP tools, grounding rules, session memory and encrypted Vercel context as typed questions. Voice cannot reach data or actions that text chat cannot.
+
+Answers to spoken questions are read aloud through `POST /api/voice/speak`, which returns MP3 audio. Turn this off with **Voice replies**. Every answer also has a **Listen** button. Markdown tables are read as plain sentences, and long answers are shortened aloud, with the full answer still on screen. Both endpoints require the login token. Audio is not stored. Uploads are capped at 4 MB, and speech at 1,500 characters, to stay within Vercel's 4.5 MB request/response limits.
+
+The microphone needs a secure origin (`https://` or `localhost`/`127.0.0.1`) and browser permission. The button is hidden in browsers without `MediaRecorder`. If microphone access is denied or voice fails, the page shows an error and typing still works. Without an OpenAI key, voice reports unavailable, just like chat.
 
 Copy `.env.example` to `.env`; `.env`, database, installed dependencies and build output are ignored. JWTs expire in 60 minutes. The browser stores the token in sessionStorage for this demo. Local processes bind to loopback. For hosted deployment, use the Vercel instructions below.
 
@@ -111,7 +122,7 @@ The root `main.py` exports one FastAPI application serving the React build, REST
 
    Generate a secret locally with `.venv/bin/python -c "import secrets; print(secrets.token_urlsafe(48))"`. Store it in Vercel settings, not in Git. Do not prefix these variables with `VITE_`. Do **not** copy local `DB_PATH=data/bank.db` or `MCP_URL` into Vercel; leave both unset.
 5. Deploy. Vercel installs Python requirements, builds React using `npm ci --prefix frontend && npm run build --prefix frontend`, and uses Python 3.12 from `.python-version`.
-6. Open the deployment URL and log in using a demo account. Verify Dashboard, Cards, Offers, `/chatbot` refresh, a question such as “Show my last 5 UPI payments”, and a follow-up. Without an OpenAI key, banking views work but chat reports unavailable.
+6. Open the deployment URL and log in using a demo account. Verify Dashboard, Cards, Offers, `/chatbot` refresh, a question such as “Show my last 5 UPI payments”, and a follow-up. To test voice, tap the microphone on `/chatbot`, allow microphone access, ask the question aloud, and tap stop. The transcript appears as your message and the answer is read aloud. Without an OpenAI key, banking views work but chat reports unavailable.
 
 No separate backend hosting, database service, or MCP process is required for this read-only demo. Vercel sets `VERCEL=1`, which selects the serverless behavior automatically:
 
@@ -120,6 +131,7 @@ No separate backend hosting, database service, or MCP process is required for th
 - A hosted MCP client can connect to `https://YOUR_DEPLOYMENT/mcp/` with a bearer token. The endpoint runs a stateless MCP server per request. Vercel deployment protection may additionally require platform access for external clients; the internal chat path does not depend on public self-requests.
 - Conversation context is an encrypted, authenticated token carried by the chat UI. It contains only recent user/assistant turns, is bound to customer and session, expires after an hour, and does not depend on instance memory. Up to six recent turns are retained, with a size cap. Prior answers are context, and banking facts must be fetched again. New chat clears this token. Refreshing or leaving the chat page clears UI history, as in local mode.
 - A random hosted JWT secret is required. The demo fallback is rejected. Rotating it invalidates existing login and conversation tokens.
+- Voice uses the same `OPENAI_API_KEY`; no extra Vercel setting is required. Voice requests are ordinary authenticated function calls within Vercel's 4.5 MB body limit.
 - `maxDuration` is set to 300 seconds in `vercel.json`; your Vercel plan must support that setting. Model latency and platform execution limits can still cause a chat timeout. This is a fictional read-only demo, not production banking infrastructure.
 
 For a custom domain used by external MCP clients, set `MCP_ALLOWED_HOSTS` to a comma-separated list of hostnames (no URL scheme), for example `bank.example.com`. The default deployment and production domains are read from Vercel system variables. Host/origin checks remain enabled.

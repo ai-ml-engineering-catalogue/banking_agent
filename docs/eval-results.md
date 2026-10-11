@@ -28,3 +28,10 @@ After dependency patching: final Python (34) and UI (5) tests pass; production b
 Verified locally: 42 Python tests, six frontend tests, and the TypeScript/Vite production build pass. New tests exercise encrypted context tamper resistance and customer/session binding, temporary database seeding/reuse, hosted-secret validation, authenticated embedded MCP filters/isolation, stateless follow-ups after resetting checkpoints, and the single-app login/REST/MCP/SPA routes.
 
 A real Vercel build/deployment has not been performed. Python tests ran on the existing Python 3.14 environment; the deployment selects Python 3.12. Real-model evaluations and visual browser QA remain pending. The repository is configured for a FastAPI project at the repo root, with React assets promoted through FastAPI frontend support. Vercel dashboard environment variables and runtime limits must be configured as described in README.
+
+
+## Voice chat — 11 October 2026
+
+Verified locally: 49 Python tests (7 new voice tests), 10 frontend tests (4 new voice tests) and the TypeScript/Vite production build pass. These cover authentication, audio format/size validation, friendly error mapping, markdown-to-speech conversion, the Vercel entry point, recording → transcription → chat → playback, voice reply toggling, blocked microphone and unsupported browsers.
+
+One real-model round trip was run in local Vercel simulation (`VERCEL=1 uvicorn main:app`) as Aarav: `gpt-4o-mini-tts` synthesised “Show my last five UPI payments.” (53 KB MP3), `gpt-4o-mini-transcribe` returned the exact sentence, chat called `get_banking_transactions` with `channel=UPI, limit=5, direction=DEBIT`, and the table answer was synthesised (≈780 KB MP3). Speak without a token returned 401. Microphone capture in a real browser and a real Vercel deployment were not tested in this environment.

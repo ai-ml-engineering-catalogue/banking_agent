@@ -27,7 +27,9 @@ React :5173 → FastAPI :8000 → LangGraph → MCP :8001/mcp → SQLite
 | `agent/prompts.py` | Grounding, date, read-only and INR instructions |
 | `agent/service.py` | Per-request MCP client, forwarded JWT, OpenAI model and session memory |
 | `frontend/src/main.tsx` | Routing, protected shell, login, banking pages and chat |
-| `frontend/src/api.ts` | REST client, sessionStorage token and INR formatter |
+| `frontend/src/api.ts` | REST client, sessionStorage token, voice upload/download and INR formatter |
+| `frontend/src/voice.ts` | MediaRecorder hook and audio playback for voice chat |
+| `agent/voice.py` | OpenAI speech-to-text, markdown-to-speech text and text-to-speech |
 | `frontend/src/style.css` | Responsive original orange/maroon design |
 | `tests/` | Python seed, API, queries, agent and real HTTP MCP tests |
 | `frontend/src/app.test.tsx` | UI login, protected route and chat tests |
@@ -122,3 +124,7 @@ Vercel requires an explicit random JWT secret of at least 32 characters. Leave D
 Run `make build` before `tests/test_vercel.py` because SPA smoke checks need the frontend output. Deployment behavior, encrypted context isolation, cold-start continuity, public authentication and embedded MCP are covered there. A passing local simulation does not mean a real Vercel deployment or paid-model evaluation was performed. See the Vercel section of README for dashboard configuration and remaining limits.
 
 Vercel resolves the root `[project]` table with uv. Keep its dependency list aligned with requirements.txt, and regenerate uv.lock after dependency changes. Do not remove the project table while retaining a pyproject.toml; Vercel invokes uv lock against this manifest.
+
+## Voice chat
+
+Voice wraps the text assistant; it never replaces it. `POST /api/voice/transcribe` (authenticated raw audio body, ≤4 MB) returns text, which the UI sends through the unchanged `/api/chat`. `POST /api/voice/speak` (authenticated) returns MP3 for an answer the user already received. Do not route audio directly to a realtime model or give voice its own tools, since that would bypass MCP grounding and customer scoping. Keep upload and speech limits under Vercel's 4.5 MB body limit. Automated tests mock the OpenAI client in `tests/test_voice.py` and stub `MediaRecorder` in `frontend/src/app.test.tsx`.

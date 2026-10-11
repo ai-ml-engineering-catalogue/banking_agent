@@ -1,6 +1,6 @@
 import logging
 import bcrypt, jwt
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -9,6 +9,7 @@ from common.db import connection
 from mcp_server import queries
 from agent.service import run_chat
 from agent.context import ContextError
+from agent import voice
 app=FastAPI(title='iBank Demo API')
 app.add_middleware(CORSMiddleware,allow_origins=['http://localhost:5173','http://127.0.0.1:5173'],allow_methods=['GET','POST'],allow_headers=['Authorization','Content-Type'])
 bearer=HTTPBearer(auto_error=False)
@@ -20,6 +21,8 @@ def auth(credentials: HTTPAuthorizationCredentials | None=Depends(bearer)):
             if not db.execute('SELECT id FROM customers WHERE id=?',(cid,)).fetchone(): raise ValueError()
         return cid,credentials.credentials
     except (jwt.PyJWTError,ValueError): raise HTTPException(401,detail='UNAUTHORIZED')
+class Speak(BaseModel):
+    text: str=Field(min_length=1,max_length=20000)
 class Login(BaseModel):
     username: str=Field(max_length=100)
     password: str=Field(max_length=100)
@@ -74,3 +77,22 @@ async def chat(body: Chat,user=Depends(auth)):
     except Exception:
         logging.getLogger(__name__).warning('Assistant request failed; verify MCP connectivity and OpenAI configuration.')
         raise HTTPException(502,detail={'error':'ASSISTANT_UNAVAILABLE','message':'The assistant is unavailable. Check the MCP service and server-side OpenAI key, then try again.'})
+def voice_unavailable():
+    logging.getLogger(__name__).warning('Voice request failed; verify OpenAI configuration and audio model access.')
+    return HTTPException(502,detail={'error':'VOICE_UNAVAILABLE','message':'Voice is unavailable right now. You can still type your question.'})
+@app.post('/api/voice/transcribe')
+async def transcribe(request: Request,user=Depends(auth)):
+    if int(request.headers.get('content-length') or 0)>voice.MAX_AUDIO_BYTES: raise HTTPException(413,detail='Recording is too long. Keep voice questions under a minute.')
+    audio=bytearray()
+    async for chunk in request.stream():
+        audio+=chunk
+        if len(audio)>voice.MAX_AUDIO_BYTES: raise HTTPException(413,detail='Recording is too long. Keep voice questions under a minute.')
+    try: return {'text':await voice.transcribe(bytes(audio),request.headers.get('content-type',''))}
+    except voice.VoiceError as exc: raise HTTPException(422,detail=str(exc))
+    except Exception: raise voice_unavailable()
+@app.post('/api/voice/speak')
+async def speak(body: Speak,user=Depends(auth)):
+    try: audio=await voice.speak(body.text)
+    except voice.VoiceError as exc: raise HTTPException(422,detail=str(exc))
+    except Exception: raise voice_unavailable()
+    return Response(audio,media_type='audio/mpeg',headers={'Cache-Control':'no-store'})
